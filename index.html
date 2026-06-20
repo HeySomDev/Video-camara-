@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>4K সিনেম্যাটিক ক্যামেরা</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0a0a0a;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            transition: filter 0.3s ease;
+            filter: contrast(1.35) saturate(1.45) brightness(1.05);
+        }
+
+        /* vignette overlay - cinematic */
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.55) 100%);
+            mix-blend-mode: multiply;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 9999px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .mode-selector {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 20;
+            pointer-events: all;
+        }
+
+        .mode-pill {
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: rgba(255, 255, 255, 0.92);
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(16px);
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: 0.2s;
+        }
+
+        .mode-pill:active {
+            transform: scale(0.94);
+        }
+
+        .mode-options {
+            position: absolute;
+            top: 52px;
+            right: 0;
+            background: rgba(12, 12, 12, 0.92);
+            backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 8px 0;
+            width: 190px;
+            display: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        .mode-option,
+        .sub-option {
+            padding: 12px 22px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.15s;
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mode-option:hover,
+        .sub-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+
+        .mode-option.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .mode-option .badge {
+            font-size: 10px;
+            background: rgba(255, 215, 0, 0.2);
+            padding: 2px 10px;
+            border-radius: 30px;
+            color: #fbbf24;
+            margin-left: auto;
+        }
+
+        .sub-option {
+            padding-left: 30px;
+        }
+
+        .sub-option .toggle-indicator {
+            margin-left: auto;
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .sub-option.active .toggle-indicator {
+            opacity: 1;
+            color: #4ade80;
+        }
+
+        .reset-option {
+            padding: 14px 22px;
+            color: #ff6b6b;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            transition: 0.15s;
+        }
+
+        .reset-option:hover {
+            background: rgba(255, 80, 80, 0.08);
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 44px;
+            z-index: 15;
+            pointer-events: all;
+        }
+
+        .capture-btn {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.92);
+            border: 5px solid #fff;
+            box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.15), 0 12px 40px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .capture-btn:active {
+            transform: scale(0.88);
+        }
+
+        .recording .capture-btn {
+            background: #ff2d55;
+            border-color: #ff2d55;
+            box-shadow: 0 0 0 10px rgba(255, 45, 85, 0.4), 0 12px 40px rgba(255, 45, 85, 0.3);
+        }
+
+        .capture-btn .inner-ring {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .recording .capture-btn .inner-ring {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .side-btn {
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: 0.15s;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .side-btn:active {
+            transform: scale(0.88);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .timer-display {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            padding: 8px 28px;
+            border-radius: 40px;
+            display: none;
+            z-index: 30;
+            letter-spacing: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .preview {
+            position: fixed;
+            bottom: 150px;
+            left: 28px;
+            width: 90px;
+            height: 130px;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            display: none;
+            z-index: 25;
+            background: #111;
+        }
+
+        .preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .status-badge {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            font-size: 12px;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(8px);
+            padding: 4px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+            pointer-events: none;
+        }
+
+        @media (max-width: 480px) {
+            .controls {
+                gap: 28px;
+                bottom: 36px;
+            }
+            .capture-btn {
+                width: 74px;
+                height: 74px;
+            }
+            .side-btn {
+                width: 54px;
+                height: 54px;
+                font-size: 22px;
+            }
+            .preview {
+                width: 72px;
+                height: 104px;
+                bottom: 120px;
+                left: 18px;
+            }
+            .mode-selector {
+                top: 16px;
+                right: 16px;
+            }
+            .timer-display {
+                font-size: 26px;
+                padding: 6px 20px;
+                top: 76px;
+            }
+            .mode-options {
+                width: 170px;
+                right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <video id="video" autoplay playsinline muted></video>
+
+    <!-- সিনেম্যাটিক ভিনিয়েট -->
+    <div class="vignette"></div>
+
+    <!-- মোড সিলেক্টর -->
+    <div class="mode-selector">
+        <div class="mode-pill" id="currentMode" onclick="toggleModeMenu()">📷 DSLR</div>
+        <div class="mode-options" id="modeOptions">
+            <div class="mode-option" data-mode="0" onclick="setQualityMode(0)">HD <span class="badge">720p</span></div>
+            <div class="mode-option" data-mode="1" onclick="setQualityMode(1)">Ultra HD <span class="badge">1080p</span></div>
+            <div class="mode-option active" data-mode="2" onclick="setQualityMode(2)">DSLR <span class="badge">4K</span></div>
+            <div style="height:1px; background:rgba(255,255,255,0.06); margin:6px 14px;"></div>
+            <div class="sub-option active" id="hdrOption" onclick="toggleHDR(this)">HDR <span class="toggle-indicator">✦</span></div>
+            <div class="sub-option" id="portraitOption" onclick="togglePortrait(this)">Portrait <span class="toggle-indicator">✦</span></div>
+            <div class="reset-option" onclick="resetSettings()">↺ রিসেট</div>
+        </div>
+    </div>
+
+    <!-- টাইমার -->
+    <div id="timerDisplay" class="timer-display">00:00</div>
+
+    <!-- স্ট্যাটাস ব্যাজ -->
+    <div class="status-badge" id="statusBadge">● 4K · 60fps</div>
+
+    <!-- প্রিভিউ -->
+    <div id="preview" class="preview">
+        <video id="thumb" autoplay loop muted></video>
+    </div>
+
+    <!-- কন্ট্রোল -->
+    <div class="controls">
+        <div class="side-btn" onclick="switchCamera()">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3L3 21"></path>
+            </svg>
+        </div>
+        <div id="captureBtn" class="capture-btn" onclick="toggleRecording()">
+            <div class="inner-ring"></div>
+        </div>
+        <div class="side-btn" onclick="toggleGallery()">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // DOM refs
+            const video = document.getElementById('video');
+            const captureBtn = document.getElementById('captureBtn');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const preview = document.getElementById('preview');
+            const thumbVideo = document.getElementById('thumb');
+            const currentModeEl = document.getElementById('currentMode');
+            const modeOptions = document.getElementById('modeOptions');
+            const hdrOption = document.getElementById('hdrOption');
+            const portraitOption = document.getElementById('portraitOption');
+            const statusBadge = document.getElementById('statusBadge');
+
+            // State
+            let stream = null;
+            let currentCamera = 'environment';
+            let currentQuality = 2; // 0=HD, 1=Ultra, 2=DSLR
+            let isHDR = true;
+            let isPortrait = false;
+            let mediaRecorder = null;
+            let recordedChunks = [];
+            let isRecording = false;
+            let timerInterval = null;
+            let startTime = null;
+
+            const qualityLabels = ['HD', 'Ultra HD', 'DSLR'];
+            const qualityResolutions = [
+                { w: 1280, h: 720 },
+                { w: 1920, h: 1080 },
+                { w: 3840, h: 2160 } // 4K
+            ];
+
+            // ---- Filters ----
+            function applyFilters() {
+                let base = `contrast(1.38) saturate(1.50) brightness(1.10)`;
+                if (isHDR) {
+                    base += ` contrast(1.20) saturate(1.30)`;
+                }
+                // cinematic warmth
+                video.style.filter = base;
+            }
+
+            // ---- Camera start ----
+            async function startCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                }
+
+                let res = qualityResolutions[currentQuality];
+                let width = res.w;
+                let height = res.h;
+                if (isPortrait) {
+                    [width, height] = [height, width];
+                }
+
+                // 60fps request
+                const constraints = {
+                    video: {
+                        facingMode: currentCamera,
+                        width: { ideal: width },
+                        height: { ideal: height },
+                        frameRate: { ideal: 60, min: 30 }
+                    },
+                    audio: true
+                };
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    video.srcObject = stream;
+                    await video.play();
+                    applyFilters();
+
+                    // update badge
+                    const fps = stream.getVideoTracks()[0]?.getSettings()?.frameRate || 60;
+                    const resText = currentQuality === 2 ? '4K' : currentQuality === 1 ? '1080p' : '720p';
+                    statusBadge.textContent = `● ${resText} · ${Math.round(fps)}fps`;
+                } catch (err) {
+                    console.error('Camera error:', err);
+                    alert('ক্যামেরা চালু করতে সমস্যা। অনুগ্রহ করে অনুমতি দিন।');
+                }
+            }
+
+            // ---- Switch cam ----
+            function switchCamera() {
+                currentCamera = currentCamera === 'environment' ? 'user' : 'environment';
+                startCamera();
+            }
+
+            // ---- Mode menu ----
+            function toggleModeMenu() {
+                const isOpen = modeOptions.style.display === 'block';
+                modeOptions.style.display = isOpen ? 'none' : 'block';
+            }
+
+            // ---- Set quality ----
+            function setQualityMode(mode) {
+                currentQuality = mode;
+                const label = qualityLabels[mode];
+                currentModeEl.textContent = `📷 ${label}`;
+                // update active class
+                document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
+                document.querySelector(`.mode-option[data-mode="${mode}"]`)?.classList.add('active');
+                modeOptions.style.display = 'none';
+                applyFilters();
+                startCamera();
+            }
+
+            // ---- Toggle HDR ----
+            function toggleHDR(el) {
+                isHDR = !isHDR;
+                el.classList.toggle('active');
+                applyFilters();
+            }
+
+            // ---- Toggle Portrait ----
+            function togglePortrait(el) {
+                isPortrait = !isPortrait;
+                el.classList.toggle('active');
+                startCamera();
+            }
+
+            // ---- Reset ----
+            function resetSettings() {
+                currentQuality = 2;
+                isHDR = true;
+                isPortrait = false;
+                currentModeEl.textContent = '📷 DSLR';
+                document.querySelectorAll('.mode-option').forEach(el => el.classList.remove('active'));
+                document.querySelector('.mode-option[data-mode="2"]')?.classList.add('active');
+                hdrOption.classList.add('active');
+                portraitOption.classList.remove('active');
+                modeOptions.style.display = 'none';
+                applyFilters();
+                startCamera();
+            }
+
+            // ---- Timer ----
+            function updateTimer() {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const min = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                const sec = String(elapsed % 60).padStart(2, '0');
+                timerDisplay.textContent = `${min}:${sec}`;
+            }
+
+            // ---- Record toggle ----
+            function toggleRecording() {
+                if (!stream) return;
+
+                if (!isRecording) {
+                    // Start recording
+                    recordedChunks = [];
+                    const mimeType = 'video/webm;codecs=vp9,opus';
+                    try {
+                        mediaRecorder = new MediaRecorder(stream, {
+                            mimeType: mimeType,
+                            videoBitsPerSecond: currentQuality === 2 ? 25000000 : 12000000
+                        });
+                    } catch (e) {
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                    }
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) recordedChunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+
+                        // show preview
+                        thumbVideo.src = url;
+                        preview.style.display = 'block';
+
+                        // download
+                        const a = document.createElement('a');
+                        const qualityTag = qualityLabels[currentQuality];
+                        const hdrTag = isHDR ? '_HDR' : '';
+                        const portraitTag = isPortrait ? '_Portrait' : '';
+                        a.href = url;
+                        a.download = `GlassCam_${qualityTag}${hdrTag}${portraitTag}_${Date.now()}.webm`;
+                        a.click();
+                        setTimeout(() => URL.revokeObjectURL(url), 15000);
+                    };
+
+                    mediaRecorder.start(1000);
+                    isRecording = true;
+                    document.body.classList.add('recording');
+                    startTime = Date.now();
+                    timerDisplay.style.display = 'block';
+                    if (timerInterval) clearInterval(timerInterval);
+                    timerInterval = setInterval(updateTimer, 200);
+                } else {
+                    // Stop recording
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                    isRecording = false;
+                    document.body.classList.remove('recording');
+                    timerDisplay.style.display = 'none';
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+            }
+
+            // ---- Gallery (preview toggle) ----
+            function toggleGallery() {
+                if (preview.style.display === 'block') {
+                    preview.style.display = 'none';
+                    thumbVideo.pause();
+                } else {
+                    if (thumbVideo.src) {
+                        preview.style.display = 'block';
+                        thumbVideo.play().catch(() => {});
+                    } else {
+                        alert('কোনো ভিডিও নেই। প্রথমে রেকর্ড করুন।');
+                    }
+                }
+            }
+
+            // ---- Click outside menu ----
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.mode-selector')) {
+                    modeOptions.style.display = 'none';
+                }
+            });
+
+            // ---- Swipe to switch cam ----
+            let touchStartX = 0;
+            document.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            document.addEventListener('touchend', (e) => {
+                const diff = e.changedTouches[0].screenX - touchStartX;
+                if (Math.abs(diff) > 100) {
+                    switchCamera();
+                }
+            }, { passive: true });
+
+            // ---- Init ----
+            window.onload = () => {
+                startCamera();
+                // default active states
+                hdrOption.classList.add('active');
+                document.querySelector('.mode-option[data-mode="2"]')?.classList.add('active');
+                currentModeEl.textContent = '📷 DSLR';
+                applyFilters();
+                // prevent context menu
+                document.addEventListener('contextmenu', e => e.preventDefault());
+            };
+
+            // Expose for inline onclick
+            window.toggleModeMenu = toggleModeMenu;
+            window.setQualityMode = setQualityMode;
+            window.toggleHDR = toggleHDR;
+            window.togglePortrait = togglePortrait;
+            window.resetSettings = resetSettings;
+            window.switchCamera = switchCamera;
+            window.toggleRecording = toggleRecording;
+            window.toggleGallery = toggleGallery;
+
+        })();
+    </script>
+</body>
+</html>
